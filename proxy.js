@@ -1,60 +1,193 @@
 var http = require("http");
-var util = require("util");
+var console = require("console");
+var crypto = require('crypto');
+var fs = require("fs");
 
 var port = 80;
-var target = "209.85.229.99";
+var target = "213.129.83.20";
+var target_port = "80";
+
+// Max time in seconds before a stale object won't be served any more (-1 = no maximum)
+var max_stale = 86400;
+
+var cache_path = "cache"
+
+process.on('uncaughtexception', function(e) {
+	console.warn("Uncaught exception: " + e);
+});
 
 try {
-	http.createServer(function(request, response) {
+	http.createServer(function(client_request, response) {
 	
+		var object_data = null;
+		var cache_lookup = true;
+		var cache_stale = false;
+		var cache_send = true;
+
 		// Create unique connection ID
 		var id = new Date();
 		id = id.getTime();
+
+		// Get current timestamp
+		var now = Math.round((new Date()).getTime() / 1000);
+
+		// Create object hash
+		var object_key = crypto.createHash('md5').update(JSON.stringify([
+			target,
+			target_port,
+			client_request.method,
+			client_request.url
+		])).digest("hex");
+
+		_log(id + " - Request: " + client_request.method + " " + client_request.url + ", " + client_request.connection.remoteAddress);
+
+		// Try to load cache object from filesystem
+		try {
+			object_data = fs.readFileSync(cache_path + "/" + object_key, 'utf8');
+		} catch (e) {
+			cache_lookup = false;
+			cache_stale = true;
+			cache_send = false;
+		}
+
+		// Cached object exists
+		if (cache_lookup) {
+
+			object_data = JSON.parse(object_data);
+
+			object_data.headers["x-cache"] = "";
+			object_data.headers["x-cache-lookup"] = "";
+
+			// Calculate if object is stale
+			var age = (now - object_data.timestamp);
+			var max_age = _getMaxAge(object_data.headers);
+
+			if (age > max_age) {
+				cache_stale = true;
+				cache_send = true;
+				object_data.headers["x-cache-lookup"] = "MISS";
+			} else {
+				object_data.headers["x-cache-lookup"] = "HIT";
+			}
+
+			// If object is stale past the max_stale value, then don't serve it from the cache
+			if (age > max_stale) {
+				cache_stale = true;
+				cache_send = false;
+			}
+
+			// Send object from cache
+			if (cache_send) {
+				object_data.headers["x-cache"] = "HIT";
+				object_data.headers["age"] = age;
+
+				response.writeHead(object_data.statusCode, object_data.headers)
+				response.end(object_data.data);
+			}
+		}
+
+		// If object was stale or nonexistent, fetch it from backend server
+		if (cache_stale) {
+
+			object_data = {
+				"timestamp": 0,
+				"statusCode": 0,
+				"headers": "",
+				"data": "",
+			};
+
+			// Do upstream request
+			_log(id + " - Backend: " + target + ":" + port + " " + client_request.method + " " + client_request.url);
 	
-		util.log("[" + id + "]: Request: " + request.method + " " + request.url + ", " + request.connection.remoteAddress);
+			// Do the upstream/backend request
+			var proxy_request = http.request({
+				host: target,
+				port: target_port,
+				method: client_request.method,
+				path: client_request.url,
+				headers: client_request.headers
+			}, function(proxy_response) {
 
-		// Do upstream request
-		util.log("[" + id + "]: Backend request: " + target + ":" + port + " " + request.method + " " + request.url);
+				var cacheable = false;
 
-		// Do the upstream/backend request
-		var proxy_request = http.request({
-			host: target,
-			port: port,
-			method: request.method,
-			path: request.url,
-			headers: request.headers
-		}, function(proxy_response) {
-	
-			util.log("[" + id + "]: Backend response: " + proxy_response.statusCode);
-			response.writeHead(proxy_response.statusCode, proxy_response.headers);
+				// Determine if object is cacheable
+				if (proxy_response.headers["cache-control"]) {
+					if (proxy_response.headers["cache-control"].indexOf("public") > -1 ||
+						proxy_response.headers["cache-control"].indexOf("max-age") > -1) {
+						cacheable = true;
+					}
+				}
 
-			// Proxy chunks of data from remote request back to the client	
-			proxy_response.on('data', function(chunk) {
-				response.write(chunk, 'binary');
+				// Set object meta info
+				if (cacheable) {
+					object_data.timestamp = now;
+					object_data.statusCode = proxy_response.statusCode;
+					object_data.headers = proxy_response.headers;
+				}
+
+				// Set/send output headers and response code
+				if (!cache_send) {
+					response_headers = proxy_response.headers;
+					response_headers["x-cache"] = "MISS";
+					response_headers["x-cache-lookup"] = "MISS";
+					if (cacheable) response_headers["age"] = "0";
+					response.writeHead(proxy_response.statusCode, response_headers);
+				}
+
+				// Wipe the cache object if it's no longer cacheable
+				if (cache_lookup && !cacheable) {
+					fs.unlink(cache_path + "/" + object_key);
+				}
+
+				// Proxy data from remote request back to the client
+				proxy_response.on('data', function(chunk) {
+					if (!cache_send) response.write(chunk, 'binary');
+					if (cacheable) object_data.data = object_data.data + chunk;
+				});
+
+				// End the response when the remote response is finished
+				proxy_response.on('end', function() {
+					if (!cache_send) response.end();
+
+					// Save the cache item
+					if (cacheable) fs.writeFileSync(cache_path + "/" + object_key, JSON.stringify(object_data));
+				});
 			});
 
-			// End the response when the remote response is finished
-			proxy_response.on('end', function() {
-				util.log("[" + id + "]: Backend response: " + proxy_response.statusCode);
-				response.end();
+			// Proxy data from the request through to the backend
+			client_request.on('data', function(chunk) {
+				proxy_request.write(chunk, 'binary');
 			});
-		});
 
-		// Proxy the chunks of data from the request through to the backend
-		request.on('data', function(chunk) {
-			proxy_request.write(chunk, 'binary');
-		});
-
-		// If/when the client connection closes, close the backend connection too		
-		request.on('end', function() {
-			proxy_request.end();
-		});
+			// When the client connection closes, close the backend connection too
+			client_request.on('end', function() {
+				proxy_request.end();
+			});
+		}
 
 	}).listen(port);
 
-	util.log("Listening on port " + port);
+	_log("master: Listening on port " + port);
 }
 catch (e) {
-	util.log("ERROR: Could not create socket 0.0.0.0." + port + " (" + e + ")");
+	_log("ERROR: Could not create socket 0.0.0.0." + port + " (" + e + ")");
 	process.exit(1);
+}
+
+function _log(msg) {
+	console.log("[" + (new Date()) + "]: " + msg);
+}
+
+function _getMaxAge(headers) {
+
+	// Inspect cache-control header
+	if (headers["cache-control"]) {
+		var params = headers["cache-control"].split(",");
+		for (var i=0, len=params.length; i<len; ++i ) {
+			if (params[i].indexOf("max-age") > -1) {
+				return params[i].split("=")[1];
+			}
+		}
+	}
+	return 0;
 }
