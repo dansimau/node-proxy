@@ -42,7 +42,7 @@ try {
 		];
 		var object_key = crypto.createHash('md5').update(JSON.stringify(object_key_plain)).digest("hex");
 
-		_log(id + " - Request: " + client_request.method + " " + client_request.url + ", " + client_request.connection.remoteAddress);
+		log(id + " - Request: " + client_request.method + " " + client_request.url + ", " + client_request.connection.remoteAddress);
 
 		// Try to load cache object from filesystem
 		try {
@@ -63,7 +63,7 @@ try {
 
 			// Calculate if object is stale
 			var age = (now - object_data.timestamp);
-			var max_age = _getMaxAge(object_data.headers);
+			var max_age = getMaxAge(object_data.headers);
 
 			if (age > max_age) {
 				cache_stale = true;
@@ -101,7 +101,7 @@ try {
 			};
 
 			// Do upstream request
-			_log(id + " - Backend: " + target + ":" + target_port + " " + client_request.method + " " + client_request.url);
+			log(id + " - Backend: " + target + ":" + target_port + " " + client_request.method + " " + client_request.url);
 
 			// Do the upstream/backend request
 			var proxy_request = http.request({
@@ -171,18 +171,18 @@ try {
 
 	}).listen(port);
 
-	_log("master: Listening on port " + port);
+	log("master: Listening on port " + port);
 }
 catch (e) {
-	_log("ERROR: Could not create socket 0.0.0.0." + port + " (" + e + ")");
+	log("ERROR: Could not create socket 0.0.0.0." + port + " (" + e + ")");
 	process.exit(1);
 }
 
-function _log(msg) {
+function log(msg) {
 	console.log("[" + (new Date()) + "]: " + msg);
 }
 
-function _getMaxAge(headers) {
+function getMaxAge(headers) {
 
 	// Inspect cache-control header
 	if (headers["cache-control"]) {
