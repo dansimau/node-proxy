@@ -3,6 +3,7 @@ var console = require("console");
 var crypto = require('crypto');
 var fs = require("fs");
 
+var name = "node-proxy";
 var port = 80;
 var target = "213.129.83.20";
 var target_port = "80";
@@ -18,7 +19,7 @@ process.on('uncaughtexception', function(e) {
 
 try {
 	http.createServer(function(client_request, response) {
-	
+
 		var object_data = null;
 		var cache_lookup = true;
 		var cache_stale = false;
@@ -32,12 +33,14 @@ try {
 		var now = Math.round((new Date()).getTime() / 1000);
 
 		// Create object hash
-		var object_key = crypto.createHash('md5').update(JSON.stringify([
+		var object_key_plain = [
 			target,
 			target_port,
+			client_request.headers.host,
 			client_request.method,
 			client_request.url
-		])).digest("hex");
+		];
+		var object_key = crypto.createHash('md5').update(JSON.stringify(object_key_plain)).digest("hex");
 
 		_log(id + " - Request: " + client_request.method + " " + client_request.url + ", " + client_request.connection.remoteAddress);
 
@@ -65,9 +68,9 @@ try {
 			if (age > max_age) {
 				cache_stale = true;
 				cache_send = true;
-				object_data.headers["x-cache-lookup"] = "MISS";
+				object_data.headers["x-cache-lookup"] = "MISS from " + name;
 			} else {
-				object_data.headers["x-cache-lookup"] = "HIT";
+				object_data.headers["x-cache-lookup"] = "HIT from " + name;
 			}
 
 			// If object is stale past the max_stale value, then don't serve it from the cache
@@ -78,7 +81,7 @@ try {
 
 			// Send object from cache
 			if (cache_send) {
-				object_data.headers["x-cache"] = "HIT";
+				object_data.headers["x-cache"] = "HIT from " + name;
 				object_data.headers["age"] = age;
 
 				response.writeHead(object_data.statusCode, object_data.headers)
@@ -90,15 +93,16 @@ try {
 		if (cache_stale) {
 
 			object_data = {
-				"timestamp": 0,
+				"key": object_key_plain,
 				"statusCode": 0,
+				"timestamp": 0,
 				"headers": "",
 				"data": "",
 			};
 
 			// Do upstream request
-			_log(id + " - Backend: " + target + ":" + port + " " + client_request.method + " " + client_request.url);
-	
+			_log(id + " - Backend: " + target + ":" + target_port + " " + client_request.method + " " + client_request.url);
+
 			// Do the upstream/backend request
 			var proxy_request = http.request({
 				host: target,
@@ -128,8 +132,8 @@ try {
 				// Set/send output headers and response code
 				if (!cache_send) {
 					response_headers = proxy_response.headers;
-					response_headers["x-cache"] = "MISS";
-					response_headers["x-cache-lookup"] = "MISS";
+					response_headers["x-cache"] = "MISS from " + name;
+					response_headers["x-cache-lookup"] = "MISS from " + name;
 					if (cacheable) response_headers["age"] = "0";
 					response.writeHead(proxy_response.statusCode, response_headers);
 				}
@@ -150,7 +154,7 @@ try {
 					if (!cache_send) response.end();
 
 					// Save the cache item
-					if (cacheable) fs.writeFileSync(cache_path + "/" + object_key, JSON.stringify(object_data));
+					if (cacheable) fs.writeFile(cache_path + "/" + object_key, JSON.stringify(object_data));
 				});
 			});
 
