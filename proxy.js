@@ -7,6 +7,7 @@ var name = "node-proxy";
 var port = 80;
 var target = "213.129.83.20";
 var target_port = "80";
+var access_log = "access.log"
 
 // Max time in seconds before a stale object won't be served any more (-1 = no maximum)
 var max_stale = 86400;
@@ -25,12 +26,8 @@ try {
 		var cache_stale = false;
 		var cache_send = true;
 
-		// Create unique connection ID
-		var id = new Date();
-		id = id.getTime();
-
-		// Get current timestamp
-		var now = Math.round((new Date()).getTime() / 1000);
+		var request_time = new Date();
+		var now = Math.round(request_time.getTime() / 1000);
 
 		// Create object hash
 		var object_key_plain = [
@@ -42,7 +39,14 @@ try {
 		];
 		var object_key = crypto.createHash('md5').update(JSON.stringify(object_key_plain)).digest("hex");
 
-		log(id + " - Request: " + client_request.method + " " + client_request.url + ", " + client_request.connection.remoteAddress);
+		log(request_time + " - Request: " + client_request.method + " " + client_request.url + ", " + client_request.connection.remoteAddress);
+		logAccess(client_request.connection.remoteAddress + " " +
+				   "-" + " " +
+				   "-" + " " +
+				   "[" + formatAccessLogDate(request_time) + "]" + " " +
+				   "\"" + client_request.method + " " + client_request.url + "\" " +
+				   "-" + " " +
+				   "-");
 
 		// Try to load cache object from filesystem
 		try {
@@ -101,7 +105,7 @@ try {
 			};
 
 			// Do upstream request
-			log(id + " - Backend: " + target + ":" + target_port + " " + client_request.method + " " + client_request.url);
+			log(request_time + " - Backend: " + target + ":" + target_port + " " + client_request.method + " " + client_request.url);
 
 			// Do the upstream/backend request
 			var proxy_request = http.request({
@@ -123,11 +127,9 @@ try {
 				}
 
 				// Set object meta info
-				if (cacheable) {
-					object_data.timestamp = now;
-					object_data.statusCode = proxy_response.statusCode;
-					object_data.headers = proxy_response.headers;
-				}
+				object_data.timestamp = now;
+				object_data.statusCode = proxy_response.statusCode;
+				object_data.headers = proxy_response.headers;
 
 				// Set/send output headers and response code
 				if (!cache_send) {
@@ -151,10 +153,11 @@ try {
 
 				// End the response when the remote response is finished
 				proxy_response.on('end', function() {
-					if (!cache_send) response.end();
 
 					// Save the cache item
 					if (cacheable) fs.writeFile(cache_path + "/" + object_key, JSON.stringify(object_data));
+
+					if (!cache_send) response.end();
 				});
 			});
 
@@ -182,6 +185,10 @@ function log(msg) {
 	console.log("[" + (new Date()) + "]: " + msg);
 }
 
+function logAccess(msg) {
+	console.log(msg);
+}
+
 function getMaxAge(headers) {
 
 	// Inspect cache-control header
@@ -194,4 +201,14 @@ function getMaxAge(headers) {
 		}
 	}
 	return 0;
+}
+
+function formatAccessLogDate(date) {
+	return ("0" + date.getDate()).slice(-2) + "/" +
+	       ("0" + (date.getMonth()+1)).slice(-2) + "/" +
+	       date.getFullYear() + ":" +
+	       ("0" + date.getHours()).slice(-2) + ":" +
+	       ("0" + date.getMinutes()).slice(-2) + ":" +
+	       ("0" + date.getSeconds()).slice(-2) + " " +
+	       "+" + (-date.getTimezoneOffset()/60*1000);
 }
