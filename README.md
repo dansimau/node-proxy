@@ -1,10 +1,10 @@
-= node-proxy =
+# node-proxy
 
-== Features ==
+## Features
 
  * Caching
  * Asychronous background refresh (clients are always served from cache)
 
-== Requirements ==
+## Requirements
 
  * Node.js 0.4.7
