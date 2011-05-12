@@ -3,7 +3,7 @@ var util = require("util");
 
 var testName = "Array buffer memory test";
 var testBufferSize = 8192;
-var testBufferItems = new Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 50, 100, 500, 1000);
+var testBufferItems = new Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 50, 100, 500, 1000, 500, 100, 100, 100, 100, 100);
 
 console.log("\n---\nTest: " + testName + "\n---\n");
 
@@ -28,8 +28,10 @@ function printStoredTotals(a) {
 
 function createString(size) {
 	var b;
+	var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
 	for (var i=0; i<size; i++) {
-		b = b + "0";
+		var r = Math.floor(Math.random() * chars.length);
+		b = b + chars.substring(r,r+1);;
 	}
 	return b;
 }
