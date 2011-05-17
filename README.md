@@ -9,6 +9,10 @@ node-proxy is a reverse caching web proxy that is designed to speed up slow web 
  * Caching
  * Asychronous background refresh (clients are always served from cache)
 
+## Limitations
+
+You can get a feel for the limitations by having a quick look at the [issue tracker](https://github.com/dansimau/node-proxy/issues).
+
 ## Requirements
 
  * Node.js 0.4.7
