@@ -18,7 +18,7 @@ for (var i = 0, l = conf.length; i < l; i++) {
 	var listen_port = conf[i].port;
 	var proxy = http_proxy.createServer(
 		conf[i].proxy
-	).listen(conf[i].port, function() {
+	).listen(conf[i].port, conf[i].interface, function() {
 		util.log("Listening on port " + listen_port);
 	});
 }
