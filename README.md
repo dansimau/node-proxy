@@ -2,13 +2,13 @@
 
 ## About
 
-node-proxy is a reverse caching web proxy that is designed to speed up slow web applications. It does this by serving out stale pages to clients while the object is refreshed in the background.
+node-proxy is a reverse caching web proxy that is designed to speed up slow web applications. It does this by serving out stale pages to clients while the object is refreshed from the origin server in the background.
 
 ## Features
 
  * Disk/memory caching
  * Asychronous background refresh (clients are always served from cache)
- * Access logging
+ * Access log
 
 ## Limitations
 
