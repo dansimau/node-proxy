@@ -6,8 +6,9 @@ node-proxy is a reverse caching web proxy that is designed to speed up slow web 
 
 ## Features
 
- * Caching
+ * Disk/memory caching
  * Asychronous background refresh (clients are always served from cache)
+ * Access logging
 
 ## Limitations
 
