@@ -8,7 +8,7 @@ var configFile;
 var conf = {};
 
 for (var i = 0, l = process.argv.length; i < l; i++) {
-	if (process.argv[i].indexOf('-c') > -1) {
+	if (process.argv[i].indexOf('-f') > -1) {
 		configFile = process.argv[i+1];
 		i++;
 		continue;
