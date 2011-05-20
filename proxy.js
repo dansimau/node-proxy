@@ -18,7 +18,15 @@ for (var i = 0, l = process.argv.length; i < l; i++) {
 if (typeof(configFile) === 'undefined') configFile = __dirname + '/proxy.conf';
 
 try {
-	conf = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+	var lines = fs.readFileSync(configFile, 'utf8').split("\n");
+
+	for (var i=0, l=lines.length; i<l; i++) {
+		if (lines[i].match(/^\s*\/\//)) {
+			delete lines[i];
+		}
+	}
+	lines = lines.join("\n");
+	conf = JSON.parse(lines);
 }
 catch (err) {
 	util.log('Unable to read configuration from file (' + configFile + ').');
