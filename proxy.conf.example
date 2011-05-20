@@ -14,12 +14,15 @@
 			],
 			"cache": {
 				"memory": {
-					"maxitems": 10000,
+					"maxitems": 100000,
 					"maxmem": 128
 				},
 				"disk": {
 					"path": "cache"
 				}
+			},
+			"accesslog": {
+				"path": "access_log"
 			}
 		}
 	}
