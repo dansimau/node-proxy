@@ -1,8 +1,26 @@
 [
 	{
-		"port": 80,
+		"listen": {
+			"hostname": "0.0.0.0",
+			"port": 80
+		},
 		"proxy": {
-			"targetHost": "209.85.146.99"
+			"name": "node-proxy",
+			"peers": [
+				{
+					"host": "1.2.3.4",
+					"port": 80
+				}
+			],
+			"cache": {
+				"memory": {
+					"maxitems": 10000,
+					"maxmem": 128
+				},
+				"disk": {
+					"path": "cache"
+				}
+			}
 		}
 	}
 ]

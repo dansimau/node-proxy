@@ -10,15 +10,17 @@ try {
 }
 catch (err) {
 	util.log('Unable to read configuration from file (' + configFile + ').');
-	util.log('Check that the file exists and syntax is correct.');
+	util.log(err);
 	process.exit(1);
 }
 
 for (var i = 0, l = conf.length; i < l; i++) {
-	var listen_port = conf[i].port;
+	var listen = {};
+	listen.hostname = conf[i].listen.hostname;
+	listen.port = conf[i].listen.port;
 	var proxy = http_proxy.createServer(
 		conf[i].proxy
-	).listen(conf[i].port, conf[i].interface, function() {
-		util.log("Listening on port " + listen_port);
+	).listen(listen.port, listen.hostname, function() {
+		util.log("Listening on interface " + listen.hostname + ":" + listen.port);
 	});
 }
