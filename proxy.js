@@ -4,8 +4,18 @@ var util = require('util');
 var http_proxy = require('./lib/proxy');
 var fs = require('fs');
 
-var configFile = __dirname + '/proxy.conf';
+var configFile;
 var conf = {};
+
+for (var i = 0, l = process.argv.length; i < l; i++) {
+	if (process.argv[i].indexOf('-c') > -1) {
+		configFile = process.argv[i+1];
+		i++;
+		continue;
+	}
+}
+
+if (typeof(configFile) === 'undefined') configFile = __dirname + '/proxy.conf';
 
 try {
 	conf = JSON.parse(fs.readFileSync(configFile, 'utf8'));
