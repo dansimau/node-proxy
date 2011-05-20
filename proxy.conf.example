@@ -6,7 +6,7 @@
 		},
 		"proxy": {
 			"name": "node-proxy",
-			"peers": [
+			"origins": [
 				{
 					"host": "1.2.3.4",
 					"port": 80
@@ -14,12 +14,29 @@
 			],
 			"cache": {
 				"memory": {
-					"maxitems": 100000,
-					"maxmem": 128
+
+					// Maximum number of items that can be stored in the memory cache. A million
+					// items may use a few hundred MBs of heap memory (in addition to buffer
+					// memory set below)
+					"maxitems": 1000000,
+
+					// Maximum amount of buffer memory to use for memory cache (MB)
+					"maxmem": 128,
+
+					// Interval between memory garbage collection (seconds)
+					"cleanup": 30,
+
+					// Interval between printing memory statistics (seconds). 0 to disable.
+					"stats": 0
 				},
 				"disk": {
+
+					// Full path to the directory where cache files will be stored on disk
 					"path": "cache"
-				}
+				},
+
+				// Interval between printing overall cache stats (seconds). 0 to disable.
+				"stats": 300
 			},
 			"accesslog": {
 				"path": "access_log"
