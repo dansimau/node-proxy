@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var util = require('util');
 var http_proxy = require('./lib/proxy');
 var fs = require('fs');
