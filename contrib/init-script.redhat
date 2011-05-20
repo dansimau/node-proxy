@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# node-proxy: A proxy server written using Node.js.
+#
+
+NAME="node-proxy"
+DAEMON_USER="root"
+DAEMON_BIN="/usr/local/node/bin/node"
+DAEMON_ARGS="/usr/local/node-proxy/proxy.js -f /usr/local/node-proxy/proxy.conf"
+DAEMON_LOG="/var/log/node-proxy/node-proxy.log"
+
+DAEMON_NAME=${DAEMON_BIN##*/}
+
+# Source function library
+. /etc/init.d/functions
+
+RETVAL=0
+
+start() {
+	echo -n $"Starting $NAME: " 
+	runuser -s /bin/sh - $DAEMON_USER -c "$DAEMON_BIN $DAEMON_ARGS" 2>&1>>$DAEMON_LOG </dev/null &
+	RETVAL=$?
+	sleep 1
+	if [ $RETVAL -eq 0 ]; then
+		success
+		touch /var/lock/subsys/$DAEMON_NAME
+	else
+		failure
+	fi
+        echo
+
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/$DAEMON_NAME
+	return $RETVAL
+}
+
+stop() {
+	echo -n $"Stopping $NAME: " 
+	killproc $DAEMON_NAME
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/$DAEMON_NAME
+	return $RETVAL
+}	
+
+restart() {
+	stop
+	start
+}	
+
+#reload() {
+#	stop
+#	start
+#}
+
+case "$1" in
+  start)
+	  start
+	;;
+  stop)
+	  stop
+	;;
+  status)
+	status $DAEMON_NAME
+	;;
+  restart)
+	  restart
+	;;
+  condrestart)
+	  [ -f /var/lock/subsys/$DAEMON_NAME ] && restart || :
+	;;
+#  reload)
+#	reload
+#	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|condrestart}" 
+	exit 1
+esac
+
+exit $?
