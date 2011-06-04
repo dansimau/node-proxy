@@ -1,0 +1,17 @@
+/*
+ * Pre-filter function that redirects non-www hostnames to their www counterparts.
+ */
+exports.redirectNonWww = function(req, res) {
+
+	// If there's no host header, just continue and do nothing
+	if (typeof(req.headers.host) !== "string") return true;
+
+	// If host doesn't start with 'www', do a 301 redirect and stop further processing
+	if (!req.headers.host.match(/^www/i)) {
+		res.writeHead(301, {
+			'Location': 'http://www.' + req.headers.host + '/' + req.url
+		});
+		res.end();
+		return false;
+	}
+}

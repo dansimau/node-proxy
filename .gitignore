@@ -1,3 +1,4 @@
 cache/
 proxy.conf
 access_log
+filters.js

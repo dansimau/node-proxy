@@ -40,6 +40,14 @@
 			},
 			"accesslog": {
 				"path": "access_log"
+			},
+
+			// Filters are sourced from filters.js so you can write your own functions to do
+			// special things on pre or post request. See filters.js.example for more info
+			"filters": {
+				"request": [
+					// "redirectNonWww",
+				]
 			}
 		}
 	}
